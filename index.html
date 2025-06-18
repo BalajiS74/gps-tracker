@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Live Bus Tracker</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+    }
+    #map {
+      height: 100vh;
+      width: 100vw;
+    }
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #323232;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-family: sans-serif;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s;
+    }
+    .toast.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="toast" class="toast">Bus arrived!</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+  const cityLocations = [
+    { name: "Chennai", lat: 13.0827, lng: 80.2707 },
+    { name: "Madurai", lat: 9.9252, lng: 78.1198 },
+    { name: "Coimbatore", lat: 11.0168, lng: 76.9558 },
+    { name: "Trichy", lat: 10.7905, lng: 78.7047 }
+  ];
+
+  const firebaseURL = "https://bus-tracking-school-92dd9-default-rtdb.asia-southeast1.firebasedatabase.app/gps.json";
+  let lastAlerted = "";
+
+  const map = L.map('map').setView([12.9716, 77.5946], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: 'Bus Tracker'
+  }).addTo(map);
+
+  // Add all city markers
+  cityLocations.forEach(city => {
+    L.marker([city.lat, city.lng], {
+      icon: L.icon({
+        iconUrl: "https://cdn-icons-png.flaticon.com/128/684/684908.png",
+        iconSize: [25, 25]
+      })
+    }).addTo(map).bindPopup(`${city.name} Stop`);
+  });
+
+  // Bus marker
+  const busMarker = L.marker([0, 0], {
+    icon: L.icon({
+      iconUrl: "https://cdn-icons-png.flaticon.com/128/2797/2797924.png",
+      iconSize: [35, 35]
+    })
+  }).addTo(map).bindPopup("Bus Location");
+
+  // Distance function
+  function getDistanceInKm(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 +
+              Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+              Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  function showToast(message) {
+    const toast = document.getElementById("toast");
+    toast.textContent = message;
+    toast.classList.add("show");
+    setTimeout(() => {
+      toast.classList.remove("show");
+    }, 3000);
+  }
+
+  function checkCityMatch(lat, lng) {
+    for (const city of cityLocations) {
+      const distance = getDistanceInKm(lat, lng, city.lat, city.lng);
+      if (distance < 0.3 && lastAlerted !== city.name) {
+        showToast(`🚌 Bus reached ${city.name}`);
+        lastAlerted = city.name;
+        break;
+      }
+    }
+  }
+
+  async function updateBusLocation() {
+    try {
+      const res = await fetch(firebaseURL);
+      const data = await res.json();
+
+      const lat = data.latitude;
+      const lng = data.longitude;
+
+      busMarker.setLatLng([lat, lng]);
+      busMarker.setPopupContent(`Bus: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+      map.setView([lat, lng], 14);
+      checkCityMatch(lat, lng);
+
+    } catch (err) {
+      console.error("❌ Failed to fetch GPS data:", err);
+    }
+  }
+
+  setInterval(updateBusLocation, 5000);
+  updateBusLocation(); // First run
+</script>
+
+</body>
+</html>
