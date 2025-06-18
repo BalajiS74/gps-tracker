@@ -1,13 +1,15 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Live Bus Tracker</title>
-  <meta charset="utf-8" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    body, html {
+    html, body {
       margin: 0;
       padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f5f5f5;
     }
     #map {
       height: 100vh;
@@ -15,22 +17,28 @@
     }
     .toast {
       position: fixed;
-      bottom: 20px;
+      bottom: 30px;
       left: 50%;
       transform: translateX(-50%);
-      background: #323232;
-      color: white;
-      padding: 12px 20px;
-      border-radius: 8px;
-      font-family: sans-serif;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      background-color: #2c3e50;
+      color: #ecf0f1;
+      padding: 15px 25px;
+      border-radius: 10px;
+      font-size: 16px;
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
       opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.5s;
+      transition: opacity 0.5s ease;
+      z-index: 999;
     }
     .toast.show {
       opacity: 1;
-      pointer-events: auto;
+    }
+    .leaflet-popup-content-wrapper {
+      background: #ffffff;
+      color: #333;
+      font-size: 14px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
   </style>
 </head>
@@ -51,47 +59,49 @@
   const firebaseURL = "https://bus-tracking-school-92dd9-default-rtdb.asia-southeast1.firebasedatabase.app/gps.json";
   let lastAlerted = "";
 
-  const map = L.map('map').setView([12.9716, 77.5946], 6);
+  const map = L.map('map').setView([12.9716, 77.5946], 7); // Initial zoom slightly closer
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: 'Bus Tracker'
+    attribution: 'Bus Tracker',
+    maxZoom: 19
   }).addTo(map);
 
-  // Add all city markers
+  // Add city markers
   cityLocations.forEach(city => {
     L.marker([city.lat, city.lng], {
       icon: L.icon({
         iconUrl: "https://cdn-icons-png.flaticon.com/128/684/684908.png",
-        iconSize: [25, 25]
+        iconSize: [28, 28],
+        iconAnchor: [14, 28],
+        popupAnchor: [0, -28]
       })
-    }).addTo(map).bindPopup(`${city.name} Stop`);
+    }).addTo(map).bindPopup(`<b>${city.name}</b> Stop`);
   });
 
   // Bus marker
   const busMarker = L.marker([0, 0], {
     icon: L.icon({
       iconUrl: "https://cdn-icons-png.flaticon.com/128/2797/2797924.png",
-      iconSize: [35, 35]
+      iconSize: [40, 40],
+      iconAnchor: [20, 40],
+      popupAnchor: [0, -35]
     })
   }).addTo(map).bindPopup("Bus Location");
 
-  // Distance function
   function getDistanceInKm(lat1, lon1, lat2, lon2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2)**2 +
-              Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
-              Math.sin(dLon/2)**2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a = Math.sin(dLat / 2) ** 2 +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
   function showToast(message) {
     const toast = document.getElementById("toast");
     toast.textContent = message;
     toast.classList.add("show");
-    setTimeout(() => {
-      toast.classList.remove("show");
-    }, 3000);
+    setTimeout(() => toast.classList.remove("show"), 3000);
   }
 
   function checkCityMatch(lat, lng) {
@@ -109,7 +119,6 @@
     try {
       const res = await fetch(firebaseURL);
       const data = await res.json();
-
       const lat = data.latitude;
       const lng = data.longitude;
 
@@ -124,7 +133,7 @@
   }
 
   setInterval(updateBusLocation, 2000);
-  updateBusLocation(); // First run
+  updateBusLocation(); // Initial load
 </script>
 
 </body>
