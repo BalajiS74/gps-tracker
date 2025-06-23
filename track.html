@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Live Bus Location</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #eef3f8;
+      padding: 20px;
+    }
+    h2 {
+      color: #2196f3;
+    }
+    #map {
+      width: 95%;
+      height: 400px;
+      margin: 20px auto;
+      border: 2px solid #2196f3;
+      border-radius: 12px;
+    }
+    #info {
+      font-size: 1rem;
+      color: #333;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>🛰️ Tracking Bus...</h2>
+  <div id="info">Loading bus details...</div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const map = L.map("map").setView([11, 78], 6);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+    const busMarker = L.marker([0, 0]).addTo(map);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const busID = urlParams.get("busID");
+    const busURL = `https://bus-tracking-school-92dd9-default-rtdb.asia-southeast1.firebasedatabase.app/gps/${busID}.json`;
+
+    async function trackBus() {
+      try {
+        const res = await fetch(busURL);
+        const data = await res.json();
+        if (!data) return;
+
+        const { latitude, longitude, busNumber, route, speed } = data;
+        busMarker.setLatLng([latitude, longitude]);
+        map.setView([latitude, longitude], 14);
+        busMarker.bindPopup(`🚍 ${busNumber}<br>📍 ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`).openPopup();
+
+        document.getElementById("info").innerHTML = `
+          <b>Bus:</b> ${busNumber} (${busID})<br>
+          <b>Route:</b> ${route}<br>
+          <b>Speed:</b> ${speed} km/h<br>
+          <b>Location:</b> ${latitude.toFixed(4)}, ${longitude.toFixed(4)}
+        `;
+      } catch (err) {
+        document.getElementById("info").innerText = "❌ Failed to load bus data";
+      }
+    }
+
+    setInterval(trackBus, 5000);
+    trackBus();
+  </script>
+</body>
+</html>
