@@ -1,204 +1,87 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Live Bus Tracker</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet/dist/leaflet.css"
-    />
-    <style>
-      @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap");
+<html>
+<head>
+  <title>Bus Tracker - Home</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+      padding: 20px;
+      text-align: center;
+    }
+    h1 {
+      color: #2196f3;
+      margin-bottom: 10px;
+    }
+    input {
+      padding: 10px;
+      width: 300px;
+      max-width: 80%;
+      margin-bottom: 20px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    .card-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+    }
+    .bus-card {
+      background: white;
+      border: 2px solid #2196f3;
+      border-radius: 10px;
+      padding: 15px;
+      width: 250px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .bus-card:hover {
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+<body>
+  <h1>🚌 Welcome to Smart Bus Tracker</h1>
+  <input type="text" id="search" placeholder="Search bus number or ID..." />
+  <div class="card-container" id="busCards"></div>
 
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
+  <script>
+    const firebaseURL = "https://bus-tracking-school-92dd9-default-rtdb.asia-southeast1.firebasedatabase.app/gps.json";
 
-      body {
-        font-family: "Poppins", sans-serif;
-        background: #f1f4f9;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: flex-start;
-        min-height: 100vh;
-        padding: 30px 10px;
-        color: #222;
-      }
+    async function loadBuses() {
+      const res = await fetch(firebaseURL);
+      const data = await res.json();
+      const container = document.getElementById("busCards");
+      container.innerHTML = "";
 
-      h1 {
-        font-size: 2rem;
-        color: #1e88e5;
-        margin-bottom: 20px;
-        font-style: italic;
-        letter-spacing: 1px;
-      }
+      const query = document.getElementById("search").value.toLowerCase();
 
-      .map-card {
-        background: white;
-        width: 95%;
-        max-width: 900px;
-        height: 500px;
-        border-radius: 16px;
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-        position: relative;
-        border: 2px solid #2196f3;
-      }
-
-      #map {
-        width: 100%;
-        height: 100%;
-      }
-
-      .toast {
-        position: fixed;
-        bottom: 30px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #323232;
-        color: #fff;
-        padding: 14px 24px;
-        border-radius: 30px;
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-        font-size: 1rem;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.5s ease;
-        z-index: 1000;
-      }
-
-      .toast.show {
-        opacity: 1;
-        pointer-events: auto;
-      }
-
-      #latlong {
-        margin-top: 20px;
-        font-size: 1.1rem;
-        color: #333;
-      }
-
-      @media (max-width: 600px) {
-        .map-card {
-          height: 300px;
+      Object.entries(data).forEach(([id, bus]) => {
+        if (
+          bus.busID.toLowerCase().includes(query) ||
+          bus.busNumber.toLowerCase().includes(query)
+        ) {
+          const card = document.createElement("div");
+          card.className = "bus-card";
+          card.innerHTML = `
+            <h3>🚍 ${bus.busNumber}</h3>
+            <p><b>ID:</b> ${bus.busID}</p>
+            <p><b>Route:</b> ${bus.route}</p>
+          `;
+          card.onclick = () => {
+            window.location.href = `track.html?busID=${bus.busID}`;
+          };
+          container.appendChild(card);
         }
-
-        h1 {
-          font-size: 1.5rem;
-        }
-
-        #latlong {
-          font-size: 0.9rem;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <h1>🛰️ Live Bus Tracking</h1>
-    <div class="map-card">
-      <div id="map"></div>
-    </div>
-    <div id="toast" class="toast">Bus arrived!</div>
-    <div id="latlong">Fetching location...</div>
-
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script>
-      const cityLocations = [
-        { name: "Chennai", lat: 13.0827, lng: 80.2707 },
-        { name: "Madurai", lat: 9.9252, lng: 78.1198 },
-        { name: "Coimbatore", lat: 11.0168, lng: 76.9558 },
-        { name: "Trichy", lat: 10.7905, lng: 78.7047 },
-      ];
-
-      const firebaseURL =
-        "https://bus-tracking-school-92dd9-default-rtdb.asia-southeast1.firebasedatabase.app/gps.json";
-
-      let lastAlerted = "";
-
-      const map = L.map("map").setView([12.9716, 77.5946], 6);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "Bus Tracker",
-      }).addTo(map);
-
-      cityLocations.forEach((city) => {
-        L.marker([city.lat, city.lng], {
-          icon: L.icon({
-            iconUrl: "https://cdn-icons-png.flaticon.com/128/684/684908.png",
-            iconSize: [25, 25],
-          }),
-        })
-          .addTo(map)
-          .bindPopup(`${city.name} Stop`);
       });
+    }
 
-      const busMarker = L.marker([0, 0], {
-        icon: L.icon({
-          iconUrl: "https://cdn-icons-png.flaticon.com/128/3085/3085350.png",
-          iconSize: [50, 50],
-        }),
-      })
-        .addTo(map)
-        .bindPopup("Bus Location");
-
-      function getDistanceInKm(lat1, lon1, lat2, lon2) {
-        const R = 6371;
-        const dLat = ((lat2 - lat1) * Math.PI) / 180;
-        const dLon = ((lon2 - lon1) * Math.PI) / 180;
-        const a =
-          Math.sin(dLat / 2) ** 2 +
-          Math.cos((lat1 * Math.PI) / 180) *
-            Math.cos((lat2 * Math.PI) / 180) *
-            Math.sin(dLon / 2) ** 2;
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      }
-
-      function showToast(message) {
-        const toast = document.getElementById("toast");
-        toast.textContent = message;
-        toast.classList.add("show");
-        setTimeout(() => {
-          toast.classList.remove("show");
-        }, 3000);
-      }
-
-      function checkCityMatch(lat, lng) {
-        for (const city of cityLocations) {
-          const distance = getDistanceInKm(lat, lng, city.lat, city.lng);
-          if (distance < 0.3 && lastAlerted !== city.name) {
-            showToast(`🚌 Bus reached ${city.name}`);
-            lastAlerted = city.name;
-            break;
-          }
-        }
-      }
-
-      async function updateBusLocation() {
-        try {
-          const res = await fetch(firebaseURL);
-          const data = await res.json();
-          const lat = data.latitude;
-          const lng = data.longitude;
-
-          if (!lat || !lng) return;
-
-          busMarker.setLatLng([lat, lng]);
-          busMarker.setPopupContent(`Bus: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-          map.setView([lat, lng], 14);
-          checkCityMatch(lat, lng);
-          document.getElementById("latlong").innerText = `📍 lat: ${lat.toFixed(
-            5
-          )} | long: ${lng.toFixed(5)}`;
-        } catch (err) {
-          console.error("❌ Failed to fetch GPS data:", err);
-        }
-      }
-
-      setInterval(updateBusLocation, 5000);
-      updateBusLocation();
-    </script>
-  </body>
+    document.getElementById("search").addEventListener("input", loadBuses);
+    loadBuses();
+  </script>
+</body>
 </html>
