@@ -1,87 +1,17 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Bus Tracker - Home</title>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f7fa;
-      padding: 20px;
-      text-align: center;
-    }
-    h1 {
-      color: #2196f3;
-      margin-bottom: 10px;
-    }
-    input {
-      padding: 10px;
-      width: 300px;
-      max-width: 80%;
-      margin-bottom: 20px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-    }
-    .card-container {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 15px;
-    }
-    .bus-card {
-      background: white;
-      border: 2px solid #2196f3;
-      border-radius: 10px;
-      padding: 15px;
-      width: 250px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    .bus-card:hover {
-      transform: scale(1.05);
-    }
-  </style>
+  <meta charset="UTF-8">
+  <title>Next Stop Alert</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>🚌 Welcome to Smart Bus Tracker</h1>
-  <input type="text" id="search" placeholder="Search bus number or ID..." />
-  <div class="card-container" id="busCards"></div>
+  <div class="box">
+    <h1>🚌 Next Stop Tracker</h1>
+    <p>📍 Current Location: <span id="location">Waiting...</span></p>
+    <p>🔔 Next Stop: <span id="nextStop">--</span></p>
+  </div>
 
-  <script>
-    const firebaseURL = "https://bus-tracking-school-92dd9-default-rtdb.asia-southeast1.firebasedatabase.app/gps.json";
-
-    async function loadBuses() {
-      const res = await fetch(firebaseURL);
-      const data = await res.json();
-      const container = document.getElementById("busCards");
-      container.innerHTML = "";
-
-      const query = document.getElementById("search").value.toLowerCase();
-
-      Object.entries(data).forEach(([id, bus]) => {
-        if (
-          bus.busID.toLowerCase().includes(query) ||
-          bus.busNumber.toLowerCase().includes(query)
-        ) {
-          const card = document.createElement("div");
-          card.className = "bus-card";
-          card.innerHTML = `
-            <h3>🚍 ${bus.busNumber}</h3>
-            <p><b>ID:</b> ${bus.busID}</p>
-            <p><b>Route:</b> ${bus.route}</p>
-          `;
-          card.onclick = () => {
-            window.location.href = `track.html?busID=${bus.busID}`;
-          };
-          container.appendChild(card);
-        }
-      });
-    }
-
-    document.getElementById("search").addEventListener("input", loadBuses);
-    loadBuses();
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
