@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>GPS Tracker Demo with Named Stops</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        margin: 0;
+        font-family: "Segoe UI", sans-serif;
+        background: linear-gradient(to bottom, #e0f7fa, #fff);
+      }
+      #map {
+        height: 60vh;
+        width: 100%;
+      }
+      #infoPanel {
+        padding: 10px;
+        background: #ffffffcc;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+      }
+      .infoRow {
+        margin-bottom: 6px;
+        color: #333;
+        font-size: 16px;
+      }
+      #fuelChartContainer {
+        width: 100%;
+        max-width: 500px;
+        margin: 10px auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div id="infoPanel">
+      <div class="infoRow">
+        📍 <strong>Location:</strong> <span id="location"></span>
+      </div>
+      <div class="infoRow">
+        🏎️ <strong>Speed:</strong> <span id="speed"></span> km/h
+      </div>
+      <div class="infoRow">
+        🕒 <strong>Timestamp:</strong> <span id="timestamp"></span>
+      </div>
+      <div class="infoRow">
+        🧭 <strong>Heading:</strong> <span id="heading"></span>°
+      </div>
+      <div class="infoRow">
+        📏 <strong>Distance Traveled:</strong> <span id="distance"></span> m
+      </div>
+      <div class="infoRow">
+        🛑 <strong>Status:</strong> <span id="status"></span>
+      </div>
+      <div class="infoRow">
+        🔔 <strong>Next Stop:</strong> <span id="stopAlert"></span>
+      </div>
+      <div class="infoRow">
+        ⛽ <strong>Fuel Level:</strong> <span id="fuel"></span>%
+      </div>
+    </div>
+    <div id="fuelChartContainer">
+      <canvas id="fuelChart"></canvas>
+    </div>
+    <audio
+      id="beepSound"
+      src="https://www.soundjay.com/button/beep-07.wav"
+      preload="auto"
+    ></audio>
+
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script>
+      const busID = "BUS123";
+      const firebaseURL = `https://bus-tracking-school-92dd9-default-rtdb.asia-southeast1.firebasedatabase.app/gps/${busID}.json`;
+      const stops = [
+        { name: "Vk Puram", lat: 8.713928, lng: 77.3896484 },
+        { name: "Vk Puram Theter", lat: 8.712921, lng: 77.3939667 },
+        { name: "Ambalavanapuram", lat: 8.7113376, lng: 77.3998239 },
+        { name: "Sivanthipuram", lat: 8.7101555, lng: 77.4067209 },
+        { name: "Adayakarungulam", lat: 8.7093855, lng: 77.4143107 },
+        { name: "Agasthiyerpatti", lat: 8.7096449, lng: 77.4223991 },
+        { name: "Ambai Rs", lat: 8.7066907, lng: 77.4375438 },
+        { name: "Rani School Ambai", lat: 8.705428, lng: 77.4417444 },
+        { name: "Kalyani Theatre", lat: 8.7037727, lng: 77.4469314 },
+        {
+          name: "Agasthiyar Kovil Bus Stop, Ambasamudram",
+          lat: 8.7038189,
+          lng: 77.4509767,
+        },
+        { name: "Ambasamudram Arch", lat: 8.703461, lng: 77.4588345 },
+        { name: "Kallidai Panchayathu", lat: 8.6880013, lng: 77.4617222 },
+        { name: "Kallidaikuruchi Rs", lat: 8.681398, lng: 77.465235 },
+        { name: "Kallidai New Bus Stand", lat: 8.6800438, lng: 77.4703092 },
+        { name: "Kallidai Kottai Street", lat: 8.6797395, lng: 77.4738484 },
+        { name: "Karambai Bus Stop", lat: 8.6782241, lng: 77.4823311 },
+        { name: "Vellanguli Bus Stop", lat: 8.6875788, lng: 77.4948794 },
+        { name: "Veeravanallur", lat: 8.6873517, lng: 77.522615 },
+        { name: "Puthukudi Bus Stop", lat: 8.6792896, lng: 77.5378911 },
+        { name: "Karaikuruchi Bus Stop", lat: 8.680845, lng: 77.5427798 },
+        { name: "Kuniyur Bus Stop", lat: 8.6779525, lng: 77.552798 },
+        { name: "Rc Middle School Chearai", lat: 8.6774363, lng: 77.5588154 },
+        { name: "Cheranmahadevi Roundtana", lat: 8.6751432, lng: 77.5648375 },
+        { name: "Scad Polytechnic College", lat: 8.6635226, lng: 77.5672354 },
+      ];
+
+      let lastLatLng = null;
+      let totalDistance = 0;
+      let lastStopName = null;
+
+      const map = L.map("map").setView([8.712, 77.4], 14);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(
+        map
+      );
+      const routePolyline = L.polyline([], { color: "blue" }).addTo(map);
+      const marker = L.marker([0, 0]).addTo(map);
+      const beepSound = document.getElementById("beepSound");
+
+      const fuelChart = new Chart(document.getElementById("fuelChart"), {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: "Fuel Level (%)",
+              data: [],
+              borderColor: "green",
+              backgroundColor: "rgba(0,255,0,0.1)",
+              fill: true,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { display: false },
+            y: { min: 0, max: 100 },
+          },
+        },
+      });
+
+      function speak(text) {
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = "en-IN";
+        window.speechSynthesis.speak(msg);
+      }
+
+      function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3;
+        const φ1 = (lat1 * Math.PI) / 180;
+        const φ2 = (lat2 * Math.PI) / 180;
+        const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+        const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+        const a =
+          Math.sin(Δφ / 2) ** 2 +
+          Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      function fetchLocation() {
+        fetch(firebaseURL)
+          .then((res) => res.json())
+          .then((data) => {
+            if (!data) return;
+            const { latitude, longitude, speed, timestamp, heading, fuel } =
+              data;
+            const latlng = [latitude, longitude];
+            marker.setLatLng(latlng);
+            map.setView(latlng);
+            routePolyline.addLatLng(latlng);
+
+            if (lastLatLng) {
+              totalDistance += calculateDistance(
+                lastLatLng[0],
+                lastLatLng[1],
+                latitude,
+                longitude
+              );
+            }
+            lastLatLng = latlng;
+
+            document.getElementById(
+              "location"
+            ).textContent = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+            document.getElementById("speed").textContent = `${speed.toFixed(
+              1
+            )}`;
+            document.getElementById("timestamp").textContent =
+              timestamp || new Date().toLocaleTimeString();
+            document.getElementById("heading").textContent = heading || "--";
+            document.getElementById("distance").textContent =
+              totalDistance.toFixed(1);
+            document.getElementById("status").textContent =
+              speed < 1 ? "Stopped" : "Moving";
+
+            if (fuel !== undefined) {
+              document.getElementById("fuel").textContent = fuel.toFixed(1);
+              if (fuelChart.data.labels.length > 20) {
+                fuelChart.data.labels.shift();
+                fuelChart.data.datasets[0].data.shift();
+              }
+              fuelChart.data.labels.push(new Date().toLocaleTimeString());
+              fuelChart.data.datasets[0].data.push(fuel);
+              fuelChart.update();
+
+              if (fuel < 20) {
+                speak("Warning: Low fuel");
+                beepSound.play();
+              }
+            }
+
+            let nearestStop = null;
+            let minDist = Infinity;
+            stops.forEach((stop) => {
+              const d = calculateDistance(
+                latitude,
+                longitude,
+                stop.lat,
+                stop.lng
+              );
+              if (d < minDist && d < 300) {
+                minDist = d;
+                nearestStop = stop.name;
+              }
+            });
+
+            if (nearestStop && nearestStop !== lastStopName) {
+              document.getElementById("stopAlert").textContent = nearestStop;
+              speak(`Approaching ${nearestStop}`);
+              lastStopName = nearestStop;
+            }
+          });
+      }
+
+      setInterval(fetchLocation, 5000);
+    </script>
+  </body>
+</html>
