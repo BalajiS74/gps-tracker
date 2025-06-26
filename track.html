@@ -1,73 +1,233 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Live Bus Location</title>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <title>Live Bus Tracker</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <style>
+    :root {
+      --primary-color: #007bff;
+      --accent-color: #28a745;
+      --bg-color: #f0f4f8;
+      --text-color: #333;
+      --shadow: 0 2px 8px rgba(0,0,0,0.1);
+      --border-radius: 12px;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background: #eef3f8;
-      padding: 20px;
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
     }
+
     h2 {
-      color: #2196f3;
+      text-align: center;
+      background: var(--primary-color);
+      color: #fff;
+      padding: 15px 0;
+      margin: 0;
+      font-size: 24px;
+      box-shadow: var(--shadow);
     }
+
     #map {
-      width: 95%;
       height: 400px;
-      margin: 20px auto;
-      border: 2px solid #2196f3;
-      border-radius: 12px;
+      width: 50%;
+      border: 3px solid blue;
+      border-radius: 30px;
+      padding: 3px;
     }
-    #info {
-      font-size: 1rem;
-      color: #333;
-      margin-top: 10px;
+
+    .section {
+      margin: 20px auto;
+      max-width: 800px;
+      padding: 15px;
+      background: #fff;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+    }
+
+    .section span {
+      font-weight: 500;
+    }
+
+    #nextstop {
+      font-weight: bold;
+      color: var(--accent-color);
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    .pause-btn {
+      background-color: #ffc107;
+      color: #000;
+    }
+
+    .resume-btn {
+      background-color: var(--accent-color);
+      color: #fff;
+    }
+    .container{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    @media (max-width: 600px) {
+      .section {
+        margin: 10px;
+        padding: 10px;
+      }
     }
   </style>
 </head>
 <body>
-  <h2>🛰️ Tracking Bus...</h2>
-  <div id="info">Loading bus details...</div>
+
+<h2>🚌 Live Bus Tracker</h2>
+<div class="container">
   <div id="map"></div>
+</div>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script>
-    const map = L.map("map").setView([11, 78], 6);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-    const busMarker = L.marker([0, 0]).addTo(map);
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const busID = urlParams.get("busID");
-    const busURL = `https://bus-tracking-school-92dd9-default-rtdb.asia-southeast1.firebasedatabase.app/gps/${busID}.json`;
+<div id="output" class="section">Loading place name...</div>
+<div id="info" class="section">Loading bus data...</div>
 
-    async function trackBus() {
-      try {
-        const res = await fetch(busURL);
-        const data = await res.json();
-        if (!data) return;
+<div id="controls" class="section">
+  <div>🔊 <span id="nextstop">Waiting for next stop info...</span></div>
+  <button class="pause-btn" onclick="pauseTracking()">⏸️ Pause</button>
+  <button class="resume-btn" onclick="resumeTracking()">▶️ Resume</button>
+</div>
 
-        const { latitude, longitude, busNumber, route, speed } = data;
-        busMarker.setLatLng([latitude, longitude]);
-        map.setView([latitude, longitude], 14);
-        busMarker.bindPopup(`🚍 ${busNumber}<br>📍 ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`).openPopup();
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
 
-        document.getElementById("info").innerHTML = `
-          <b>Bus:</b> ${busNumber} (${busID})<br>
-          <b>Route:</b> ${route}<br>
-          <b>Speed:</b> ${speed} km/h<br>
-          <b>Location:</b> ${latitude.toFixed(4)}, ${longitude.toFixed(4)}
-        `;
-      } catch (err) {
-        document.getElementById("info").innerText = "❌ Failed to load bus data";
+<script>
+  const map = L.map("map").setView([11, 78], 6);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  const busIcon = L.icon({
+    iconUrl: "bus.png",
+    iconSize: [60, 60],
+    iconAnchor: [30, 60],
+  });
+
+  const busMarker = L.marker([0, 0], { icon: busIcon }).addTo(map);
+  const urlParams = new URLSearchParams(window.location.search);
+  const busID = urlParams.get("busID");
+  const busURL = `https://bus-tracking-school-92dd9-default-rtdb.asia-southeast1.firebasedatabase.app/gps/${busID}.json`;
+
+  let trackingInterval = null;
+  let currentStopIndex = 0;
+  const stops = [
+    { name: "VK Puram", lat: 8.661316, lng: 77.566892 },
+    { name: "Kottai", lat: 8.665000, lng: 77.566300 },
+    { name: "Ayyanarkoil", lat: 8.668000, lng: 77.566000 },
+    { name: "Near SCAD", lat: 8.672000, lng: 77.566500 },
+    { name: "SCAD Polytechnic", lat: 8.675278161446839, lng: 77.56618021190643 }
+  ];
+
+  function speak(text) {
+    const utter = new SpeechSynthesisUtterance(text);
+    speechSynthesis.speak(utter);
+  }
+
+  function getDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) ** 2 +
+              Math.cos(lat1 * Math.PI / 180) *
+              Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  async function trackBus() {
+    try {
+      const res = await fetch(busURL);
+      const data = await res.json();
+      if (!data || !data.latitude || !data.longitude) return;
+
+      const { latitude, longitude, busNumber, route, speed } = data;
+      busMarker.setLatLng([latitude, longitude]);
+      map.setView([latitude, longitude], 15);
+
+      getPlaceName(latitude, longitude);
+
+      document.getElementById("info").innerHTML = `
+        <span>🚌 Bus:</span> ${busNumber} (${busID})<br>
+        <span>📍 Route:</span> ${route}<br>
+        <span>🚀 Speed:</span> ${speed} km/h<br>
+        <span>🗺️ Location:</span> ${latitude.toFixed(5)}, ${longitude.toFixed(5)}
+      `;
+
+      const stop = stops[currentStopIndex];
+      const distance = getDistance(latitude, longitude, stop.lat, stop.lng);
+
+      if (distance < 0.2) {
+        speak(`Next stop is ${stop.name}`);
+        document.getElementById("nextstop").innerText = `✅ Next stop is ${stop.name}`;
+        currentStopIndex = Math.min(currentStopIndex + 1, stops.length - 1);
       }
-    }
 
-    setInterval(trackBus, 5000);
+    } catch (err) {
+      document.getElementById("info").innerText = "❌ Failed to load bus data";
+    }
+  }
+
+  async function getPlaceName(lat, lon) {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": "BusTracker/1.0 (youremail@example.com)"
+        }
+      });
+      const data = await response.json();
+      const placeName = data.display_name || "Unknown location";
+      const cityName = placeName.split(',')[0].trim();
+      document.getElementById("output").innerText = `📍 Place: ${cityName}`;
+    } catch (err) {
+      document.getElementById("output").innerText = "❌ Could not fetch address";
+    }
+  }
+
+  function startTracking() {
     trackBus();
-  </script>
+    trackingInterval = setInterval(trackBus, 5000);
+  }
+
+  function pauseTracking() {
+    clearInterval(trackingInterval);
+    document.getElementById("nextstop").innerText = "⏸️ Tracking paused";
+  }
+
+  function resumeTracking() {
+    startTracking();
+    document.getElementById("nextstop").innerText = `▶️ Tracking resumed`;
+  }
+
+  startTracking();
+</script>
+
 </body>
 </html>
