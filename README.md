@@ -1,3 +1,3 @@
 # gps-tracker
 test project 
-[live](https://balajis74.github.io/stopwatch/)
+[live](https://balajis74.github.io/gps-tracker/)
