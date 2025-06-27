@@ -56,8 +56,10 @@
         📏 <strong>Distance Traveled:</strong> <span id="distance"></span> m
       </div>
       <div class="infoRow">
-        🛑 <strong>Status:</strong> <span id="status"></span>
+        <span id="statusicon"></span> <strong>Status:</strong>
+        <span id="status"></span>
       </div>
+
       <div class="infoRow">
         🔔 <strong>Next Stop:</strong> <span id="stopAlert"></span>
       </div>
@@ -70,14 +72,18 @@
     </div>
     <audio
       id="beepSound"
-      src="https://www.soundjay.com/button/beep-07.wav"
+      src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
       preload="auto"
     ></audio>
 
     <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://rawcdn.githack.com/bbecquet/Leaflet.RotatedMarker/master/leaflet.rotatedMarker.js"></script>
+
     <script>
       const busID = "BUS123";
       const firebaseURL = `https://bus-tracking-school-92dd9-default-rtdb.asia-southeast1.firebasedatabase.app/gps/${busID}.json`;
+      let stopStartTime = null;
+      let isParked = false;
       const stops = [
         { name: "Vk Puram", lat: 8.713928, lng: 77.3896484 },
         { name: "Vk Puram Theter", lat: 8.712921, lng: 77.3939667 },
@@ -118,7 +124,18 @@
         map
       );
       const routePolyline = L.polyline([], { color: "blue" }).addTo(map);
-      const marker = L.marker([0, 0]).addTo(map);
+      const busIcon = L.icon({
+        iconUrl: "bus.png",
+        iconSize: [40, 40],
+        iconAnchor: [20, 40],
+        popupAnchor: [0, -40],
+      });
+      let currentLatLng = [0, 0];
+      const marker = L.marker(currentLatLng, {
+        icon: busIcon,
+        rotationAngle: 0,
+      }).addTo(map);
+
       const beepSound = document.getElementById("beepSound");
 
       const fuelChart = new Chart(document.getElementById("fuelChart"), {
@@ -163,6 +180,7 @@
       }
 
       function fetchLocation() {
+        const previousLatLng = currentLatLng.slice();
         fetch(firebaseURL)
           .then((res) => res.json())
           .then((data) => {
@@ -170,7 +188,16 @@
             const { latitude, longitude, speed, timestamp, heading, fuel } =
               data;
             const latlng = [latitude, longitude];
+            const angle =
+              (Math.atan2(
+                latlng[1] - previousLatLng[1],
+                latlng[0] - previousLatLng[0]
+              ) *
+                180) /
+              Math.PI;
             marker.setLatLng(latlng);
+            marker.setRotationAngle(angle);
+            currentLatLng = latlng;
             map.setView(latlng);
             routePolyline.addLatLng(latlng);
 
@@ -195,8 +222,29 @@
             document.getElementById("heading").textContent = heading || "--";
             document.getElementById("distance").textContent =
               totalDistance.toFixed(1);
-            document.getElementById("status").textContent =
-              speed < 1 ? "Stopped" : "Moving";
+            const statusElement = document.getElementById("status");
+            const iconElement = document.getElementById("statusicon");
+
+            if (speed < 1) {
+              if (!stopStartTime) stopStartTime = Date.now();
+              const stoppedDuration = Date.now() - stopStartTime;
+
+              if (stoppedDuration > 120000) {
+                // 2 minutes
+                statusElement.textContent = "Parked";
+                iconElement.textContent = "🅿️";
+                isParked = true;
+              } else {
+                statusElement.textContent = "Stopped";
+                iconElement.textContent = "🛑";
+                isParked = false;
+              }
+            } else {
+              statusElement.textContent = "Moving";
+              iconElement.textContent = "🟢";
+              stopStartTime = null;
+              isParked = false;
+            }
 
             if (fuel !== undefined) {
               document.getElementById("fuel").textContent = fuel.toFixed(1);
@@ -231,13 +279,13 @@
 
             if (nearestStop && nearestStop !== lastStopName) {
               document.getElementById("stopAlert").textContent = nearestStop;
-              speak(`Approaching ${nearestStop}`);
+              speak(`next stop is: ${nearestStop}`);
               lastStopName = nearestStop;
             }
           });
       }
 
-      setInterval(fetchLocation, 5000);
+      setInterval(fetchLocation, 2000);
     </script>
   </body>
 </html>
