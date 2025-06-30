@@ -1,233 +1,353 @@
 <!DOCTYPE html>
-<html>
-<head>
-  <title>Live Bus Tracker</title>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-  <style>
-    :root {
-      --primary-color: #007bff;
-      --accent-color: #28a745;
-      --bg-color: #f0f4f8;
-      --text-color: #333;
-      --shadow: 0 2px 8px rgba(0,0,0,0.1);
-      --border-radius: 12px;
-    }
-
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-color);
-    }
-
-    h2 {
-      text-align: center;
-      background: var(--primary-color);
-      color: #fff;
-      padding: 15px 0;
-      margin: 0;
-      font-size: 24px;
-      box-shadow: var(--shadow);
-    }
-
-    #map {
-      height: 400px;
-      width: 50%;
-      border: 3px solid blue;
-      border-radius: 30px;
-      padding: 3px;
-    }
-
-    .section {
-      margin: 20px auto;
-      max-width: 800px;
-      padding: 15px;
-      background: #fff;
-      border-radius: var(--border-radius);
-      box-shadow: var(--shadow);
-    }
-
-    .section span {
-      font-weight: 500;
-    }
-
-    #nextstop {
-      font-weight: bold;
-      color: var(--accent-color);
-    }
-
-    button {
-      padding: 10px 20px;
-      margin: 5px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: background 0.3s ease;
-    }
-
-    button:hover {
-      opacity: 0.9;
-    }
-
-    .pause-btn {
-      background-color: #ffc107;
-      color: #000;
-    }
-
-    .resume-btn {
-      background-color: var(--accent-color);
-      color: #fff;
-    }
-    .container{
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
-    @media (max-width: 600px) {
-      .section {
-        margin: 10px;
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>GPS Tracker Demo with Named Stops</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        margin: 0;
+        font-family: "Segoe UI", sans-serif;
+        background: linear-gradient(to bottom, #e0f7fa, #fff);
+      }
+      #infoPanel {
         padding: 10px;
+        background: #ffffffcc;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+        width: 430px;
       }
-    }
-  </style>
-</head>
-<body>
-
-<h2>🚌 Live Bus Tracker</h2>
-<div class="container">
-  <div id="map"></div>
-</div>
-
-
-<div id="output" class="section">Loading place name...</div>
-<div id="info" class="section">Loading bus data...</div>
-
-<div id="controls" class="section">
-  <div>🔊 <span id="nextstop">Waiting for next stop info...</span></div>
-  <button class="pause-btn" onclick="pauseTracking()">⏸️ Pause</button>
-  <button class="resume-btn" onclick="resumeTracking()">▶️ Resume</button>
-</div>
-
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-
-<script>
-  const map = L.map("map").setView([11, 78], 6);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
-
-  const busIcon = L.icon({
-    iconUrl: "bus.png",
-    iconSize: [60, 60],
-    iconAnchor: [30, 60],
-  });
-
-  const busMarker = L.marker([0, 0], { icon: busIcon }).addTo(map);
-  const urlParams = new URLSearchParams(window.location.search);
-  const busID = urlParams.get("busID");
-  const busURL = `https://bus-tracking-school-92dd9-default-rtdb.asia-southeast1.firebasedatabase.app/gps/${busID}.json`;
-
-  let trackingInterval = null;
-  let currentStopIndex = 0;
-  const stops = [
-    { name: "VK Puram", lat: 8.661316, lng: 77.566892 },
-    { name: "Kottai", lat: 8.665000, lng: 77.566300 },
-    { name: "Ayyanarkoil", lat: 8.668000, lng: 77.566000 },
-    { name: "Near SCAD", lat: 8.672000, lng: 77.566500 },
-    { name: "SCAD Polytechnic", lat: 8.675278161446839, lng: 77.56618021190643 }
-  ];
-
-  function speak(text) {
-    const utter = new SpeechSynthesisUtterance(text);
-    speechSynthesis.speak(utter);
-  }
-
-  function getDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) ** 2 +
-              Math.cos(lat1 * Math.PI / 180) *
-              Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon/2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
-
-  async function trackBus() {
-    try {
-      const res = await fetch(busURL);
-      const data = await res.json();
-      if (!data || !data.latitude || !data.longitude) return;
-
-      const { latitude, longitude, busNumber, route, speed } = data;
-      busMarker.setLatLng([latitude, longitude]);
-      map.setView([latitude, longitude], 15);
-
-      getPlaceName(latitude, longitude);
-
-      document.getElementById("info").innerHTML = `
-        <span>🚌 Bus:</span> ${busNumber} (${busID})<br>
-        <span>📍 Route:</span> ${route}<br>
-        <span>🚀 Speed:</span> ${speed} km/h<br>
-        <span>🗺️ Location:</span> ${latitude.toFixed(5)}, ${longitude.toFixed(5)}
-      `;
-
-      const stop = stops[currentStopIndex];
-      const distance = getDistance(latitude, longitude, stop.lat, stop.lng);
-
-      if (distance < 0.2) {
-        speak(`Next stop is ${stop.name}`);
-        document.getElementById("nextstop").innerText = `✅ Next stop is ${stop.name}`;
-        currentStopIndex = Math.min(currentStopIndex + 1, stops.length - 1);
+      .infoRow {
+        margin-bottom: 6px;
+        color: #333;
+        font-size: 16px;
       }
-
-    } catch (err) {
-      document.getElementById("info").innerText = "❌ Failed to load bus data";
-    }
-  }
-
-  async function getPlaceName(lat, lon) {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;
-    try {
-      const response = await fetch(url, {
-        headers: {
-          "User-Agent": "BusTracker/1.0 (youremail@example.com)"
+      #fuelChartContainer {
+        width: 100%;
+        max-width: 500px;
+        margin: 10px auto;
+      }
+      #timelineContainer {
+        margin: 20px auto;
+        max-width: 600px;
+        max-height: 400px;
+        overflow-y: auto;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        padding: 16px 0 16px 40px; /* space for line */
+        position: relative;
+      }
+      #timeline {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        position: relative;
+      }
+      /* Vertical line */
+      #timeline::before {
+        content: "";
+        position: absolute;
+        left: -25px;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: #b2ebf2;
+        border-radius: 2px;
+        z-index: 0;
+      }
+      .timeline-stop {
+        position: relative;
+        margin-bottom: 18px;
+        min-height: 32px;
+        display: flex;
+        align-items: center;
+        z-index: 1;
+      }
+      .timeline-dot {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #b2ebf2;
+        border: 3px solid #26c6da;
+        position: absolute;
+        left: -32px;
+        top: 50%;
+        transform: translateY(-50%);
+        box-sizing: border-box;
+        transition: background 0.2s, border 0.2s;
+      }
+      .timeline-stop.current .timeline-dot {
+        background: #26c6da;
+        border-color: #0097a7;
+        animation: blink 1s infinite;
+      }
+      .timeline-stop.upcoming .timeline-dot {
+        background: #e0f7fa;
+        border-color: #b2ebf2;
+      }
+      .timeline-stop.past .timeline-dot {
+        background: #b2dfdb;
+        border-color: #80cbc4;
+        opacity: 0.7;
+      }
+      @keyframes blink {
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 #26c6da88;
         }
+        50% {
+          box-shadow: 0 0 0 8px #26c6da33;
+        }
+      }
+      .timeline-label {
+        margin-left: 16px;
+        font-size: 16px;
+        color: #333;
+        font-weight: 500;
+        background: none;
+        z-index: 2;
+      }
+      .timeline-stop.current .timeline-label {
+        color: #0097a7;
+        font-weight: bold;
+      }
+      .timeline-stop.upcoming .timeline-label {
+        color: #555;
+      }
+      .timeline-stop.past .timeline-label {
+        color: #aaa;
+      }
+    </style>
+  </head>
+  <body>
+    <h3 style="text-align: center; background-color: #26c6da">Bus route🚌</h3>
+    <div id="timelineContainer">
+      <ul id="timeline"></ul>
+    </div>
+    <div
+      class="infocontainer"
+      style="display: flex; align-items: center; justify-content: center"
+    >
+      <div id="infoPanel">
+        <div class="infoRow">
+          📍 <strong>Location:</strong> <span id="location"></span>
+        </div>
+        <div class="infoRow">
+          🏎️ <strong>Speed:</strong> <span id="speed"></span> km/h
+        </div>
+        <div class="infoRow">
+          🕒 <strong>Timestamp:</strong> <span id="timestamp"></span>
+        </div>
+        <div class="infoRow">
+          🧭 <strong>Heading:</strong> <span id="heading"></span>°
+        </div>
+        <div class="infoRow">
+          📏 <strong>Distance Traveled:</strong> <span id="distance"></span> m
+        </div>
+        <div class="infoRow">
+          <span id="statusicon"></span> <strong>Status:</strong>
+          <span id="status"></span>
+        </div>
+
+        <div class="infoRow">
+          🔔 <strong>Next Stop:</strong> <span id="stopAlert"></span>
+        </div>
+        <div class="infoRow">
+          ⛽ <strong>Fuel Level:</strong> <span id="fuel"></span>%
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeline UI -->
+
+    <div id="fuelChartContainer">
+      <canvas id="fuelChart"></canvas>
+    </div>
+    <audio
+      id="beepSound"
+      src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
+      preload="auto"
+    ></audio>
+    <script>
+      // Get busID from URL query (?busid=BUS123), fallback to BUS123 if not present
+      function getBusID() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get("busID");
+      }
+
+      let stops = [];
+      const busID = getBusID();
+      const firebaseURL = `https://bus-tracking-school-92dd9-default-rtdb.asia-southeast1.firebasedatabase.app/gps/${busID}.json`;
+      let stopStartTime = null;
+      let isParked = false;
+      let lastLatLng = null;
+      let totalDistance = 0;
+      let lastStopName = null;
+      let currentStopIndex = -1;
+
+      async function loadStops(busID) {
+        const fileName = `${busID}.json`;
+        const response = await fetch(`./routedata/${fileName}`);
+        if (!response.ok) {
+          console.error("Failed to load stops data");
+          return [];
+        }
+        const data = await response.json();
+        return data.stops || [];
+      }
+
+      function updateTimeline(currentIndex) {
+        const timeline = document.getElementById("timeline");
+        timeline.innerHTML = "";
+        stops.forEach((stop, idx) => {
+          const li = document.createElement("li");
+          li.className = "timeline-stop";
+          if (idx === currentIndex) {
+            li.classList.add("current");
+          } else if (idx > currentIndex) {
+            li.classList.add("upcoming");
+          } else {
+            li.classList.add("past");
+          }
+          // Dot
+          const dot = document.createElement("span");
+          dot.className = "timeline-dot";
+          li.appendChild(dot);
+          // Label
+          const label = document.createElement("span");
+          label.className = "timeline-label";
+          label.textContent = stop.name;
+          li.appendChild(label);
+
+          timeline.appendChild(li);
+        });
+      }
+
+      function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3;
+        const φ1 = (lat1 * Math.PI) / 180;
+        const φ2 = (lat2 * Math.PI) / 180;
+        const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+        const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+        const a =
+          Math.sin(Δφ / 2) ** 2 +
+          Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      function fetchLocation() {
+        fetch(firebaseURL)
+          .then((res) => res.json())
+          .then((data) => {
+            if (!data) return;
+            const { latitude, longitude, speed, timestamp, heading, fuel } =
+              data;
+
+            document.getElementById(
+              "location"
+            ).textContent = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+            document.getElementById("speed").textContent = `${speed.toFixed(
+              1
+            )}`;
+            document.getElementById("timestamp").textContent =
+              timestamp || new Date().toLocaleTimeString();
+            document.getElementById("heading").textContent = heading || "--";
+            document.getElementById("distance").textContent =
+              totalDistance.toFixed(1);
+            const statusElement = document.getElementById("status");
+            const iconElement = document.getElementById("statusicon");
+
+            if (speed < 1) {
+              if (!stopStartTime) stopStartTime = Date.now();
+              const stoppedDuration = Date.now() - stopStartTime;
+
+              if (stoppedDuration > 120000) {
+                // 2 minutes
+                statusElement.textContent = "Parked";
+                iconElement.textContent = "🅿️";
+                isParked = true;
+              } else {
+                statusElement.textContent = "Stopped";
+                iconElement.textContent = "🛑";
+                isParked = false;
+              }
+            } else {
+              statusElement.textContent = "Moving";
+              iconElement.textContent = "🟢";
+              stopStartTime = null;
+              isParked = false;
+            }
+
+            if (fuel !== undefined) {
+              document.getElementById("fuel").textContent = fuel.toFixed(1);
+              if (fuelChart.data.labels.length > 20) {
+                fuelChart.data.labels.shift();
+                fuelChart.data.datasets[0].data.shift();
+              }
+              fuelChart.data.labels.push(new Date().toLocaleTimeString());
+              fuelChart.data.datasets[0].data.push(fuel);
+              fuelChart.update();
+
+              if (fuel < 20) {
+                // speak("Warning: Low fuel");
+                beepSound.play();
+              }
+            }
+
+            let nearestStop = null;
+            let minDist = Infinity;
+            let nearestIndex = -1;
+            stops.forEach((stop, idx) => {
+              const d = calculateDistance(
+                latitude,
+                longitude,
+                stop.lat,
+                stop.lng
+              );
+              if (d < minDist && d < 300) {
+                minDist = d;
+                nearestStop = stop.name;
+                nearestIndex = idx;
+              }
+            });
+
+            if (nearestStop && nearestStop !== lastStopName) {
+              document.getElementById("stopAlert").textContent = nearestStop;
+              lastStopName = nearestStop;
+              currentStopIndex = nearestIndex;
+              updateTimeline(currentStopIndex);
+              // Let the DOM update and animation start before speaking
+              setTimeout(() => {
+                speak(`next stop is: ${nearestStop}`);
+              }, 100);
+            } else if (currentStopIndex === -1) {
+              // On first load, show timeline
+              updateTimeline(-1);
+            }
+          });
+      }
+
+      // Load stops and start interval after stops are loaded
+      loadStops(busID).then((data) => {
+        stops = data;
+        updateTimeline(-1);
+        setInterval(fetchLocation, 2000);
       });
-      const data = await response.json();
-      const placeName = data.display_name || "Unknown location";
-      const cityName = placeName.split(',')[0].trim();
-      document.getElementById("output").innerText = `📍 Place: ${cityName}`;
-    } catch (err) {
-      document.getElementById("output").innerText = "❌ Could not fetch address";
-    }
-  }
 
-  function startTracking() {
-    trackBus();
-    trackingInterval = setInterval(trackBus, 5000);
-  }
-
-  function pauseTracking() {
-    clearInterval(trackingInterval);
-    document.getElementById("nextstop").innerText = "⏸️ Tracking paused";
-  }
-
-  function resumeTracking() {
-    startTracking();
-    document.getElementById("nextstop").innerText = `▶️ Tracking resumed`;
-  }
-
-  startTracking();
-</script>
-
-</body>
+      function speak(text) {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel(); // Stop any previous speech
+          const msg = new SpeechSynthesisUtterance(text);
+          msg.lang = "en-IN";
+          window.speechSynthesis.speak(msg);
+        }
+      }
+    </script>
+  </body>
 </html>
