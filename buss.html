@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bus List</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Arial, sans-serif;
+        background: #f5f7fa;
+        margin: 0;
+        padding: 0;
+      }
+      #search {
+        display: block;
+        margin: 30px auto 20px auto;
+        padding: 10px 16px;
+        width: 90%;
+        max-width: 400px;
+        font-size: 18px;
+        border: 1px solid #bdbdbd;
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgba(33, 150, 243, 0.05);
+        outline: none;
+        transition: border 0.2s;
+      }
+      #search:focus {
+        border: 1.5px solid #2196f3;
+      }
+      .card-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 24px;
+        justify-content: center;
+        padding: 10px 0 40px 0;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .bus-card {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 2px 12px rgba(33, 150, 243, 0.08);
+        padding: 22px 28px;
+        min-width: 240px;
+        max-width: 320px;
+        flex: 1 1 240px;
+        cursor: pointer;
+        transition: box-shadow 0.2s, transform 0.2s;
+        border: 1px solid #e3e3e3;
+        position: relative;
+      }
+      .bus-card:hover {
+        box-shadow: 0 6px 24px rgba(33, 150, 243, 0.18);
+        transform: translateY(-4px) scale(1.03);
+        border-color: #2196f3;
+      }
+      .bus-card h3 {
+        margin: 0 0 8px 0;
+        color: #2196f3;
+        font-size: 1.3em;
+        font-weight: 600;
+      }
+      .bus-card p {
+        margin: 4px 0;
+        color: #333;
+        font-size: 1em;
+      }
+      @media (max-width: 700px) {
+        .card-container {
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+        }
+        .bus-card {
+          min-width: 90vw;
+          max-width: 98vw;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <input type="text" id="search" placeholder="Search bus number or ID..." />
+    <div class="card-container" id="busCards"></div>
+    <!-- <a href="./getlive/marker.html">track live </a> -->
+    <script>
+      const firebaseURL =
+        "https://bus-tracking-school-92dd9-default-rtdb.asia-southeast1.firebasedatabase.app/gps.json";
+
+      async function loadBuses() {
+        const res = await fetch(firebaseURL);
+        const data = await res.json();
+        const container = document.getElementById("busCards");
+        container.innerHTML = "";
+
+        const query = document.getElementById("search").value.toLowerCase();
+
+        Object.entries(data).forEach(([id, bus]) => {
+          if (
+            bus.busID.toLowerCase().includes(query) ||
+            bus.busNumber.toLowerCase().includes(query)
+          ) {
+            const card = document.createElement("div");
+            card.className = "bus-card";
+            card.innerHTML = `
+            <h3>🚍 ${bus.busNumber}</h3>
+            <p><b>ID:</b> ${bus.busID}</p>
+            <p><b>Route:</b> ${bus.route}</p>
+          `;
+            card.onclick = () => {
+              window.location.href = `track.html?busID=${bus.busID}`;
+            };
+            container.appendChild(card);
+          }
+        });
+      }
+
+      document.getElementById("search").addEventListener("input", loadBuses);
+      loadBuses();
+    </script>
+  </body>
+</html>
