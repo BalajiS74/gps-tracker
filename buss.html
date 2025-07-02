@@ -4,10 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bus List</title>
+    <link rel="stylesheet" href="./index.css" />
     <style>
       body {
         font-family: "Segoe UI", Arial, sans-serif;
-        background: #f5f7fa;
+        background: linear-gradient(to bottom, #e0f7fa, #fff);
         margin: 0;
         padding: 0;
       }
@@ -79,6 +80,18 @@
     </style>
   </head>
   <body>
+    <marquee behavior="scroll" direction="left" class="heading"
+      >Welcome to SCAD Smart Bus tracking🚌!</marquee
+    >
+    <nav>
+      <div class="logo">Smart Bus Tracker</div>
+      <ul>
+        <li><a href="./index.html">Home</a></li>
+        <li><a href="./buss.html">Buses</a></li>
+        <li><a href="./contect.html">Contact</a></li>
+        <li><a href="./authpage.html ">Login</a></li>
+      </ul>
+    </nav>
     <input type="text" id="search" placeholder="Search bus number or ID..." />
     <div class="card-container" id="busCards"></div>
     <!-- <a href="./getlive/marker.html">track live </a> -->
