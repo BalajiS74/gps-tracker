@@ -4,137 +4,126 @@
     <title>Bus Tracker - Home</title>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        background: #f5f7fa;
-        min-height: 100vh;
-        margin: 0;
-        padding: 0;
-      }
-      .banner {
-        max-width: 700px;
-        margin: 48px auto;
-        padding: 32px 24px;
-        border-radius: 24px;
-        background: #fff;
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
-        border: 1.5px solid #e3e3e3;
-        text-align: center;
-      }
-      nav {
-        background: #2196f3;
-        color: white;
-        padding: 10px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-radius: 16px;
-        margin: 24px;
-        box-shadow: 0 2px 8px rgba(33, 150, 243, 0.08);
-      }
-      nav .logo {
-        font-size: 24px;
-        font-weight: bold;
-        letter-spacing: 1px;
-      }
-      nav ul {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-        display: flex;
-        gap: 15px;
-      }
-      nav ul li {
-        display: inline;
-      }
-      nav ul li a {
-        color: white;
-        text-decoration: none;
-        padding: 5px 14px;
-        border-radius: 5px;
-        transition: background 0.3s;
-        font-size: 1em;
-      }
-      nav ul li a:hover {
-        background: rgba(255, 255, 255, 0.2);
-      }
-      .content{
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-      }
-      .content h1 {
-        color: #2196f3;
-        margin-bottom: 10px;
-        margin-top: 18px;
-        font-size: 2em;
-        letter-spacing: 1px;
-        text-align: center;
-      }
-      .content p {
-        color: #333;
-        font-size: 1.2em;
-        margin: 30px auto 0 auto;
-        max-width: 500px;
-        background: #f5f7fa;
-        border-radius: 10px;
-        padding: 18px 20px;
-      }
-      @media (max-width: 800px) {
-        .banner {
-          max-width: 98vw;
-          padding: 12px 2vw;
-        }
-      }
-      @media (max-width: 500px) {
-        nav {
-          flex-direction: column;
-          align-items: flex-start;
-        }
-        nav .logo {
-          font-size: 18px;
-        }
-        nav ul {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 0;
-        }
-        nav ul li {
-          margin: 5px 0;
-        }
-        .content h1 {
-          font-size: 1.2em;
-        }
-        .content p {
-          font-size: 1em;
-          padding: 12px 6px;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="./index.css">
   </head>
   <body>
+    <marquee behavior="scroll" direction="left" class="heading"
+      >Welcome to SCAD Smart Bus tracking🚌!</marquee
+    >
     <nav>
       <div class="logo">Smart Bus Tracker</div>
       <ul>
-        <li><a href="#">Home</a></li>
+        <li><a href="./index.html">Home</a></li>
         <li><a href="./buss.html">Buses</a></li>
-        <li><a href="#">Contact</a></li>
-        <li><a href="#">Login</a></li>
+        <li><a href="./contect.html">Contact</a></li>
+        <li><a href="./authpage.html">Login</a></li>
       </ul>
     </nav>
-    <main style=" display: flex; align-items: center; justify-content: center; height: 70vh;">
+    <main
+      style="
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 80vh;
+      "
+    >
       <div class="content">
-        <h1>🚌 Welcome to Smart Bus Tracker</h1>
-        <p>
-          Track your school and college buses in real-time with Smart Bus
-          Tracker.<br />
-        View live locations, stop details, and route information for all
-        buses.<br />
-        Click on <b>Buses</b> to see the list of available routes and start
-        tracking your journey!
-      </p>
+        <div class="text-block">
+          <h1>🚌 Welcome to Smart Bus Tracker</h1>
+          <p>
+            Track your school and college buses in <b>real-time</b> with Smart Bus Tracker.
+            View live locations, stop details, and route information for all buses.
+            Click on <b>Buses</b> to see the list of available routes and start tracking your journey!
+          </p>
+          <button onclick="window.location.href='./buss.html'" style="margin-top: 12px; padding: 10px 30px; margin-left: 40px; border: none; background-color:  #26c6da; font-size: medium; font-weight: bold; border-radius: 5px;color: white;box-shadow: rgba(0, 0, 0, 0.16) 0px 10px 36px 0px, rgba(0, 0, 0, 0.06) 0px 0px 0px 1px;
+          cursor: pointer;">View Buses</button>
+        </div>
+        <div class="side-image">
+          <img src="./images/busimage-Photoroom.png" alt="bus image" />
+        </div>
+      </div>
+    </main>
+    <div class="recent-search">
+      <div class="text">
+        <h4>Recent search</h4>
+      </div>
+      <div class="card-container" id="busCards"></div>
     </div>
+    <footer style="background-color: #2c3e50; padding-bottom: 20px; color: white;">
+      <div
+        style="
+          width: 100%;
+          margin: 0 auto;
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: space-around;
+          align-items: flex-start;
+        "
+      >
+        <!-- About Section -->
+        <div
+          style="
+            flex: 1;
+            max-width: 550px;
+            margin-bottom: 20px;
+            margin-right: 70px;
+          "
+        >
+          <h3>About Me</h3>
+          <p>
+            Track Your Bus is a cutting-edge platform designed to simplify and
+            secure school transportation through real-time GPS tracking. Our
+            mission is to provide parents, schools, and transport operators with
+            a reliable and efficient way to monitor school buses, ensuring
+            safety, convenience, and peace of mind.
+          </p>
+        </div>
+
+        <!-- Contact Info Section -->
+        <div style="flex: 1; max-width: 350px; margin-bottom: 20px">
+          <h3>Get in Touch</h3>
+          <p>
+            Email: <a href="mailto:balaji@example.com" style=" color: #f5f7fa; text-decoration: none;">balaji@example.com</a>
+          </p>
+          <p>Phone: <a href="tel:+1234567890" style=" color: #f5f7fa; text-decoration: none;">+123 456 7890</a></p>
+          <div class="social-links">
+            <a href="https://linkedin.com/in/balaji " style="color: #f5f7fa; text-decoration: none;" target="_blank"
+              >LinkedIn</a
+            >
+            <a href="https://github.com/balaji" style="color: #f5f7fa; text-decoration: none;" target="_blank">GitHub</a>
+            <a href="https://instagram.com/balaji" style="color: #f5f7fa; text-decoration: none;" target="_blank">Instagram</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom " style="text-align: center;" >©2025 SCAD. All rights reserved.</div>
+    </footer>
+
+    <script>
+      const firebaseURL =
+        "https://bus-tracking-school-92dd9-default-rtdb.asia-southeast1.firebasedatabase.app/gps.json";
+
+      async function loadBuses() {
+        const res = await fetch(firebaseURL);
+        const data = await res.json();
+        const container = document.getElementById("busCards");
+        container.innerHTML = "";
+
+        Object.entries(data).forEach(([id, bus]) => {
+          const card = document.createElement("div");
+          card.className = "bus-card";
+          card.innerHTML = `
+            <h3>🚍 ${bus.busNumber}</h3>
+            <p><b>ID:</b> ${bus.busID}</p>
+            <p><b>Route:</b> ${bus.route}</p>
+          `;
+          card.onclick = () => {
+            window.location.href = `track.html?busID=${bus.busID}`;
+          };
+          container.appendChild(card);
+        });
+      }
+
+      loadBuses();
+    </script>
   </body>
 </html>
