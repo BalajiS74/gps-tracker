@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Login & Signup - Smart Bus Tracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f5f7fa;
+        margin: 0;
+        padding: 0;
+      }
+      .auth-container {
+        max-width: 400px;
+        margin: 100px auto;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(33,150,243,0.08);
+        padding: 32px 24px;
+      }
+      .tabs {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 24px;
+      }
+      .tab {
+        padding: 10px 32px;
+        cursor: pointer;
+        background: #e3f2fd;
+        color: #26c6da;
+        border: none;
+        border-radius: 6px 6px 0 0;
+        font-size: 1em;
+        margin-right: 2px;
+        transition: background 0.2s, color 0.2s;
+      }
+      .tab.active {
+        background: #26c6da;
+        color: #fff;
+      }
+      form {
+        display: none;
+        margin-top: 0;
+      }
+      form.active {
+        display: block;
+      }
+      label {
+        display: block;
+        margin-bottom: 6px;
+        color: #333;
+        font-weight: 500;
+      }
+      input {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 18px;
+        border: 1px solid #bdbdbd;
+        border-radius: 6px;
+        font-size: 1em;
+        box-sizing: border-box;
+      }
+      button[type="submit"] {
+        background: #26c6da;
+        color: #fff;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-size: 1em;
+        cursor: pointer;
+        transition: background 0.2s;
+        width: 100%;
+      }
+      button[type="submit"]:hover {
+        background: #26c6da;
+      }
+      .switch-link {
+        text-align: center;
+        margin-top: 10px;
+        color: #26c6da;
+        cursor: pointer;
+        font-size: 0.98em;
+      }
+    </style>
+    <link rel="stylesheet" href=" ./index.css">
+  </head>
+  <body>
+    <marquee behavior="scroll" direction="left" class="heading"
+      >Welcome to SCAD Smart Bus tracking🚌!</marquee
+    >
+    <nav>
+      <div class="logo">Smart Bus Tracker</div>
+      <ul>
+        <li><a href="./index.html">Home</a></li>
+        <li><a href="./buss.html">Buses</a></li>
+        <li><a href="./contect.html">Contact</a></li>
+        <li><a href="./authpage.html">Login</a></li>
+      </ul>
+    </nav>
+    <div class="auth-container">
+      <div class="tabs">
+        <button class="tab active" id="loginTab" onclick="showTab('login')">Login</button>
+        <button class="tab" id="signupTab" onclick="showTab('signup')">Sign Up</button>
+      </div>
+      <form id="loginForm" class="active" autocomplete="off">
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" required placeholder="Enter your email" />
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" required placeholder="Enter your password" />
+        <button type="submit">Login</button>
+      </form>
+      <form id="signupForm" autocomplete="off">
+        <label for="signupName">Name</label>
+        <input type="text" id="signupName" required placeholder="Enter your name" />
+        <label for="signupEmail">Email</label>
+        <input type="email" id="signupEmail" required placeholder="Enter your email" />
+        <label for="signupPassword">Password</label>
+        <input type="password" id="signupPassword" required placeholder="Create a password" />
+        <button type="submit">Sign Up</button>
+      </form>
+    </div>
+    <script>
+      function showTab(tab) {
+        document.getElementById('loginTab').classList.toggle('active', tab === 'login');
+        document.getElementById('signupTab').classList.toggle('active', tab === 'signup');
+        document.getElementById('loginForm').classList.toggle('active', tab === 'login');
+        document.getElementById('signupForm').classList.toggle('active', tab === 'signup');
+      }
+
+      // Prevent default form submission for demo
+      document.getElementById('loginForm').onsubmit = function(e) {
+        e.preventDefault();
+        alert('Login submitted!');
+      };
+      document.getElementById('signupForm').onsubmit = function(e) {
+        e.preventDefault();
+        alert('Signup submitted!');
+      };
+    </script>
+  </body>
+</html>
